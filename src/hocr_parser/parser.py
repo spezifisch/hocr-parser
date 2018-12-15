@@ -9,7 +9,7 @@ class HOCRElement:
 
     __metaclass__ = ABCMeta
 
-    COORDINATES_PATTERN = re.compile("bbox\s(-?[0-9]+)\s(-?[0-9]+)\s(-?[0-9]+)\s(-?[0-9]+)")
+    COORDINATES_PATTERN = re.compile(r"bbox\s(-?[0-9]+)\s(-?[0-9]+)\s(-?[0-9]+)\s(-?[0-9]+)")
 
     def __init__(self, hocr_html, parent, next_tag, next_attribute, next_class):
         self.__coordinates = (0, 0, 0, 0)
