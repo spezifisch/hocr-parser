@@ -18,7 +18,7 @@ class HOCRElement:
         self._parent = parent
         self._elements = self._parse(next_tag, next_attribute, next_class)
 
-    def _parse(self, next_tag, next_attributte, next_class):
+    def _parse(self, next_tag, next_attribute, next_class):
 
         try:
             self._id = self._hocr_html['id']
@@ -40,7 +40,7 @@ class HOCRElement:
 
         elements = []
         if next_tag is not None and next_class is not None:
-            for html_element in self._hocr_html.find_all(next_tag, {'class':next_attributte}):
+            for html_element in self._hocr_html.find_all(next_tag, {'class': next_attribute}):
                 elements.append(next_class(self, html_element))
         return elements
 
@@ -73,6 +73,7 @@ class HOCRElement:
     @abstractmethod
     def ocr_text(self):
         pass
+
 
 class HOCRDocument(HOCRElement):
 
@@ -128,7 +129,6 @@ class Page(HOCRElement):
         return len(self._elements)
 
 
-
 class Area(HOCRElement):
 
     HOCR_AREA_TAG = "ocr_carea"
@@ -152,6 +152,7 @@ class Area(HOCRElement):
             output += "\n"
         output += self._elements[-1].ocr_text
         return output
+
 
 class Paragraph(HOCRElement):
 
