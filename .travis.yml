@@ -4,11 +4,6 @@ python:
   - 3.6
   - 2.7
 
-env:
-  - TOXENV=py27
-  - TOXENV=py36
-  - TOXENV=py37
-
 install:
   - pip install tox
 
