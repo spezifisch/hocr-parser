@@ -2,3 +2,4 @@ pytest
 tox
 coverage
 pytest-cov
+coveralls
