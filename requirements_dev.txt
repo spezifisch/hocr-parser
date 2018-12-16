@@ -1,4 +1,1 @@
-pytest
 tox
-coverage
-pytest-cov

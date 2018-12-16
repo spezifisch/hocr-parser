@@ -2,6 +2,14 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
 
+REQUIRED_PACKAGES = [
+    'beautifulsoup4',
+]
+
+TESTING_PACKAGES = [
+    'tox',
+]
+
 setup(
     name='hocr-parser',
     version='0.1',
@@ -22,12 +30,9 @@ setup(
     dependency_links=[
         'bzr+lp:beautifulsoup#egg=beautifulsoup-4.0',
     ],
-    install_requires=[
-        'beautifulsoup4'
-    ],
+    install_requires=REQUIRED_PACKAGES,
+    tests_require=REQUIRED_PACKAGES + TESTING_PACKAGES,
     extras_require={
-        'test': [
-            'tox', 'pytest', 'coverage', 'pytest-cov'
-        ],
+        'testing': REQUIRED_PACKAGES + TESTING_PACKAGES,
     },
 )
