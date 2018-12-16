@@ -27,7 +27,7 @@ setup(
     ],
     extras_require={
         'test': [
-            'pytest'
+            'tox', 'pytest'
         ],
     },
 )
