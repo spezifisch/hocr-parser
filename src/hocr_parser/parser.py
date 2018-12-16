@@ -6,59 +6,22 @@ import re
 
 
 class HOCRElement:
-
     __metaclass__ = ABCMeta
 
-    COORDINATES_PATTERN = re.compile(r"bbox\s(-?[0-9.]+)\s(-?[0-9.]+)\s(-?[0-9.]+)\s(-?[0-9.]+)")
+    COORDINATES_PATTERN = re.compile(
+        r"bbox\s(-?[0-9.]+)\s(-?[0-9.]+)\s(-?[0-9.]+)\s(-?[0-9.]+)"
+    )
+    HTML_TAG = None
+    HTML_CLASS = None
 
-    def __init__(self, hocr_html, parent, next_tag, next_attribute, next_class):
-        self.__coordinates = (0, 0, 0, 0)
+    def __init__(self, hocr_html, parent=None):
         self._hocr_html = hocr_html
-        self._id = None
         self._parent = parent
-        self._elements = self._parse(next_tag, next_attribute, next_class)
+        self.__coordinates = (0, 0, 0, 0)
+        self._id = None
+        self._elements = []
 
-    def _parse(self, next_tag, next_attribute, next_class):
-
-        try:
-            self._id = self._hocr_html['id']
-        except KeyError:
-            self._id = None
-
-        try:
-            title = self._hocr_html['title']
-            match = HOCRElement.COORDINATES_PATTERN.search(title)
-            if match:
-                self.__coordinates = (int(match.group(1).split(".")[0]),
-                                      int(match.group(2).split(".")[0]),
-                                      int(match.group(3).split(".")[0]),
-                                      int(match.group(4).split(".")[0]))
-            else:
-                raise ValueError("The HOCR element doesn't contain a valid title property")
-        except KeyError:
-            self.__coordinates = (0, 0, 0, 0)
-
-        elements = []
-        if next_tag is not None and next_class is not None:
-            for html_element in self._hocr_html.find_all(next_tag, {'class': next_attribute}):
-                elements.append(next_class(self, html_element))
-        return elements
-
-    @property
-    def coordinates(self):
-        return self.__coordinates
-
-    @property
-    def html(self):
-        return self._hocr_html.prettify()
-
-    @property
-    def id(self):
-        return self._id
-
-    @property
-    def parent(self):
-        return self._parent
+        self._parse()
 
     def __hash__(self):
         return hash(self._id)
@@ -69,30 +32,68 @@ class HOCRElement:
         else:
             return self._id == other._id
 
+    def _parse(self):
+        self._id = self._hocr_html.attrs.get("id", None)
+        title = self._hocr_html.attrs.get("title", "")
+        match = HOCRElement.COORDINATES_PATTERN.search(title)
+        if match:
+            self.__coordinates = (int(match.group(1).split(".")[0]),
+                                  int(match.group(2).split(".")[0]),
+                                  int(match.group(3).split(".")[0]),
+                                  int(match.group(4).split(".")[0]))
+
+        if self._child_node_class:
+            tag = self._child_node_class.HTML_TAG
+            html_class = self._child_node_class.HTML_CLASS
+            children = self._hocr_html.find_all(tag, {"class": html_class})
+            for html_child in children:
+                hocr_child = self._child_node_class(html_child, parent=self)
+                self._elements.append(hocr_child)
+
+    @property
+    @abstractmethod
+    def _child_node_class(self):
+        raise NotImplementedError()
+
+    @property
+    def html(self):
+        return self._hocr_html.prettify()
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @property
+    def coordinates(self):
+        return self.__coordinates
+
+    @property
+    def id(self):
+        return self._id
+
     @property
     @abstractmethod
     def ocr_text(self):
-        pass
+        raise NotImplementedError()
 
 
 class HOCRDocument(HOCRElement):
-
     def __init__(self, source, is_path=False):
-
         if not is_path:
-            hocr_html = BeautifulSoup(source, 'html.parser')
+            hocr_html = BeautifulSoup(source, "html.parser")
         else:
-            hocr_html = BeautifulSoup(open(source, 'r').read(), 'html.parser')
+            hocr_html = BeautifulSoup(open(source, "r").read(), "html.parser")
 
-        super(HOCRDocument, self).__init__(hocr_html, None, 'div', Page.HOCR_PAGE_TAG, Page)
+        super(HOCRDocument, self).__init__(hocr_html, parent=None)
+
+    @property
+    def _child_node_class(self):
+        return Page
 
     @property
     def ocr_text(self):
-        output = ""
-        for element in self._elements[:-1]:
-            output += element.ocr_text
-            output += "\n\n"
-        output += self._elements[-1].ocr_text
+        output = [child.ocr_text for child in self._elements]
+        output = "\n\n".join(output)
         return output
 
     @property
@@ -105,19 +106,20 @@ class HOCRDocument(HOCRElement):
 
 
 class Page(HOCRElement):
+    HTML_TAG = "div"
+    HTML_CLASS = "ocr_page"
 
-    HOCR_PAGE_TAG = "ocr_page"
+    def __init__(self, hocr_html, parent=None):
+        super(Page, self).__init__(hocr_html, parent)
 
-    def __init__(self, parent, hocr_html):
-        super(Page, self).__init__(hocr_html, parent, 'div', Area.HOCR_AREA_TAG, Area)
+    @property
+    def _child_node_class(self):
+        return Area
 
     @property
     def ocr_text(self):
-        output = ""
-        for element in self._elements[:-1]:
-            output += element.ocr_text
-            output += "\n\n"
-        output += self._elements[-1].ocr_text
+        output = [child.ocr_text for child in self._elements]
+        output = "\n\n".join(output)
         return output
 
     @property
@@ -130,11 +132,21 @@ class Page(HOCRElement):
 
 
 class Area(HOCRElement):
+    HTML_TAG = "div"
+    HTML_CLASS = "ocr_carea"
 
-    HOCR_AREA_TAG = "ocr_carea"
+    def __init__(self, hocr_html, parent=None):
+        super(Area, self).__init__(hocr_html, parent)
 
-    def __init__(self, parent, hocr_html):
-        super(Area, self).__init__(hocr_html, parent, 'p', Paragraph.HOCR_PAR_TAG, Paragraph)
+    @property
+    def _child_node_class(self):
+        return Paragraph
+
+    @property
+    def ocr_text(self):
+        output = [child.ocr_text for child in self._elements]
+        output = "\n".join(output)
+        return output
 
     @property
     def paragraphs(self):
@@ -144,22 +156,23 @@ class Area(HOCRElement):
     def nparagraphs(self):
         return len(self._elements)
 
-    @property
-    def ocr_text(self):
-        output = ""
-        for element in self._elements[:-1]:
-            output += element.ocr_text
-            output += "\n"
-        output += self._elements[-1].ocr_text
-        return output
-
 
 class Paragraph(HOCRElement):
+    HTML_TAG = "p"
+    HTML_CLASS = "ocr_par"
 
-    HOCR_PAR_TAG = "ocr_par"
+    def __init__(self, hocr_html, parent=None):
+        super(Paragraph, self).__init__(hocr_html, parent)
 
-    def __init__(self, parent, hocr_html):
-        super(Paragraph, self).__init__(hocr_html, parent, 'span', Line.HOCR_LINE_TAG, Line)
+    @property
+    def _child_node_class(self):
+        return Line
+
+    @property
+    def ocr_text(self):
+        output = [child.ocr_text for child in self._elements]
+        output = "\n".join(output)
+        return output
 
     @property
     def lines(self):
@@ -169,22 +182,23 @@ class Paragraph(HOCRElement):
     def nlines(self):
         return len(self._elements)
 
-    @property
-    def ocr_text(self):
-        output = ""
-        for element in self._elements[:-1]:
-            output += element.ocr_text
-            output += "\n"
-        output += self._elements[-1].ocr_text
-        return output
-
 
 class Line(HOCRElement):
+    HTML_TAG = "span"
+    HTML_CLASS = "ocr_line"
 
-    HOCR_LINE_TAG = "ocr_line"
+    def __init__(self, hocr_html, parent=None):
+        super(Line, self).__init__(hocr_html, parent)
 
-    def __init__(self, parent, hocr_html):
-        super(Line, self).__init__(hocr_html, parent, 'span', Word.HOCR_WORD_TAG, Word)
+    @property
+    def _child_node_class(self):
+        return Word
+
+    @property
+    def ocr_text(self):
+        output = [child.ocr_text for child in self._elements]
+        output = " ".join(output)
+        return output
 
     @property
     def words(self):
@@ -194,27 +208,22 @@ class Line(HOCRElement):
     def nwords(self):
         return len(self._elements)
 
-    @property
-    def ocr_text(self):
-        output = ""
-        for element in self._elements[:-1]:
-            output += element.ocr_text
-            output += " "
-        output += self._elements[-1].ocr_text
-        return output
-
 
 class Word(HOCRElement):
+    HTML_TAG = "span"
+    HTML_CLASS = "ocrx_word"
 
-    HOCR_WORD_TAG = "ocrx_word"
+    def __init__(self, hocr_html, parent=None):
+        super(Word, self).__init__(hocr_html, parent)
 
-    def __init__(self, parent, hocr_html):
-        super(Word, self).__init__(hocr_html, parent, None, None, None)
+    @property
+    def _child_node_class(self):
+        return None
 
     @property
     def ocr_text(self):
-        word = self._hocr_html.string
-        if word is not None:
-            return word
+        text = self._hocr_html.string
+        if text:
+            return text
         else:
             return ""

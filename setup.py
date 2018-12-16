@@ -12,7 +12,7 @@ TESTING_PACKAGES = [
 
 setup(
     name='hocr-parser',
-    version='0.1',
+    version='0.2',
     description='HOCR Specification Python Parser',
     author='Athento',
     author_email='rh@athento.com',
