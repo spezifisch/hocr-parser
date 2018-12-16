@@ -27,7 +27,7 @@ setup(
     ],
     extras_require={
         'test': [
-            'tox', 'pytest'
+            'tox', 'pytest', 'coverage', 'pytest-cov', 'coveralls'
         ],
     },
 )
