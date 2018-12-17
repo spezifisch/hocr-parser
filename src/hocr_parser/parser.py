@@ -5,6 +5,11 @@ from bs4 import BeautifulSoup
 import re
 
 
+class classproperty(property):
+    def __get__(self, cls, owner):
+        return classmethod(self.fget).__get__(None, owner)()
+
+
 class HOCRElement:
     __metaclass__ = ABCMeta
 
@@ -50,7 +55,7 @@ class HOCRElement:
                 hocr_child = self._child_node_class(html_child, parent=self)
                 self._elements.append(hocr_child)
 
-    @property
+    @classproperty
     @abstractmethod
     def _child_node_class(self):
         raise NotImplementedError()
@@ -86,8 +91,8 @@ class HOCRDocument(HOCRElement):
 
         super(HOCRDocument, self).__init__(hocr_html, parent=None)
 
-    @property
-    def _child_node_class(self):
+    @classproperty
+    def _child_node_class(cls):
         return Page
 
     @property
@@ -112,7 +117,7 @@ class Page(HOCRElement):
     def __init__(self, hocr_html, parent=None):
         super(Page, self).__init__(hocr_html, parent)
 
-    @property
+    @classproperty
     def _child_node_class(self):
         return Area
 
@@ -138,7 +143,7 @@ class Area(HOCRElement):
     def __init__(self, hocr_html, parent=None):
         super(Area, self).__init__(hocr_html, parent)
 
-    @property
+    @classproperty
     def _child_node_class(self):
         return Paragraph
 
@@ -164,7 +169,7 @@ class Paragraph(HOCRElement):
     def __init__(self, hocr_html, parent=None):
         super(Paragraph, self).__init__(hocr_html, parent)
 
-    @property
+    @classproperty
     def _child_node_class(self):
         return Line
 
@@ -190,7 +195,7 @@ class Line(HOCRElement):
     def __init__(self, hocr_html, parent=None):
         super(Line, self).__init__(hocr_html, parent)
 
-    @property
+    @classproperty
     def _child_node_class(self):
         return Word
 
@@ -216,7 +221,7 @@ class Word(HOCRElement):
     def __init__(self, hocr_html, parent=None):
         super(Word, self).__init__(hocr_html, parent)
 
-    @property
+    @classproperty
     def _child_node_class(self):
         return None
 
