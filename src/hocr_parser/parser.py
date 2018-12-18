@@ -14,7 +14,7 @@ class HOCRElement:
     __metaclass__ = ABCMeta
 
     COORDINATES_PATTERN = re.compile(
-        r"bbox\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)"
+        r"\bbbox\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\b"
     )
     HTML_TAG = None
     HTML_CLASS = None
