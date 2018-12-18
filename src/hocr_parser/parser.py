@@ -24,7 +24,7 @@ class HOCRElement:
         self._parent = parent
         self.__coordinates = (0, 0, 0, 0)
         self._id = None
-        self._elements = []
+        self._children = []
 
         self._parse()
 
@@ -55,7 +55,7 @@ class HOCRElement:
             children = self._hocr_html.find_all(tag, {"class": html_class})
             for html_child in children:
                 hocr_child = self._child_node_class(html_child, parent=self)
-                self._elements.append(hocr_child)
+                self._children.append(hocr_child)
 
     @classproperty
     @abstractmethod
@@ -80,11 +80,11 @@ class HOCRElement:
 
     @property
     def children(self):
-        return self._elements
+        return self._children
 
     @property
     def nchildren(self):
-        return len(self._elements)
+        return len(self._children)
 
     @property
     @abstractmethod
