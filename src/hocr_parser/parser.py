@@ -107,7 +107,7 @@ class HOCRDocument(HOCRElement):
 
     @property
     def ocr_text(self):
-        output = [child.ocr_text for child in self._elements]
+        output = [child.ocr_text for child in self._children]
         output = "\n\n".join(output)
         return output
 
@@ -125,7 +125,7 @@ class Page(HOCRElement):
 
     @property
     def ocr_text(self):
-        output = [child.ocr_text for child in self._elements]
+        output = [child.ocr_text for child in self._children]
         output = "\n\n".join(output)
         return output
 
@@ -143,7 +143,7 @@ class Area(HOCRElement):
 
     @property
     def ocr_text(self):
-        output = [child.ocr_text for child in self._elements]
+        output = [child.ocr_text for child in self._children]
         output = "\n".join(output)
         return output
 
@@ -161,7 +161,7 @@ class Paragraph(HOCRElement):
 
     @property
     def ocr_text(self):
-        output = [child.ocr_text for child in self._elements]
+        output = [child.ocr_text for child in self._children]
         output = "\n".join(output)
         return output
 
@@ -179,7 +179,7 @@ class Line(HOCRElement):
 
     @property
     def ocr_text(self):
-        output = [child.ocr_text for child in self._elements]
+        output = [child.ocr_text for child in self._children]
         output = " ".join(output)
         return output
 
