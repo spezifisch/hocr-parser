@@ -63,6 +63,14 @@ class HOCRElement:
         raise NotImplementedError()
 
     @property
+    def id(self):
+        return self._id
+
+    @property
+    def coordinates(self):
+        return self.__coordinates
+
+    @property
     def html(self):
         return self._hocr_html.prettify()
 
@@ -71,12 +79,12 @@ class HOCRElement:
         return self._parent
 
     @property
-    def coordinates(self):
-        return self.__coordinates
+    def children(self):
+        return self._elements
 
     @property
-    def id(self):
-        return self._id
+    def nchildren(self):
+        return len(self._elements)
 
     @property
     @abstractmethod
@@ -103,14 +111,6 @@ class HOCRDocument(HOCRElement):
         output = "\n\n".join(output)
         return output
 
-    @property
-    def pages(self):
-        return self._elements
-
-    @property
-    def npages(self):
-        return len(self._elements)
-
 
 class Page(HOCRElement):
     HTML_TAG = "div"
@@ -128,14 +128,6 @@ class Page(HOCRElement):
         output = [child.ocr_text for child in self._elements]
         output = "\n\n".join(output)
         return output
-
-    @property
-    def areas(self):
-        return self._elements
-
-    @property
-    def nareas(self):
-        return len(self._elements)
 
 
 class Area(HOCRElement):
@@ -155,14 +147,6 @@ class Area(HOCRElement):
         output = "\n".join(output)
         return output
 
-    @property
-    def paragraphs(self):
-        return self._elements
-
-    @property
-    def nparagraphs(self):
-        return len(self._elements)
-
 
 class Paragraph(HOCRElement):
     HTML_TAG = "p"
@@ -181,14 +165,6 @@ class Paragraph(HOCRElement):
         output = "\n".join(output)
         return output
 
-    @property
-    def lines(self):
-        return self._elements
-
-    @property
-    def nlines(self):
-        return len(self._elements)
-
 
 class Line(HOCRElement):
     HTML_TAG = "span"
@@ -206,14 +182,6 @@ class Line(HOCRElement):
         output = [child.ocr_text for child in self._elements]
         output = " ".join(output)
         return output
-
-    @property
-    def words(self):
-        return self._elements
-
-    @property
-    def nwords(self):
-        return len(self._elements)
 
 
 class Word(HOCRElement):
