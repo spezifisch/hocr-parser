@@ -42,10 +42,12 @@ class HOCRElement:
         title = self._hocr_html.attrs.get("title", "")
         match = HOCRElement.COORDINATES_PATTERN.search(title)
         if match:
-            self.__coordinates = (int(match.group(1).split(".")[0]),
-                                  int(match.group(2).split(".")[0]),
-                                  int(match.group(3).split(".")[0]),
-                                  int(match.group(4).split(".")[0]))
+            self.__coordinates = (
+                int(float(match.group(1))),
+                int(float(match.group(2))),
+                int(float(match.group(3))),
+                int(float(match.group(4)))
+            )
 
         if self._child_node_class:
             tag = self._child_node_class.HTML_TAG
