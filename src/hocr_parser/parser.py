@@ -25,6 +25,7 @@ class HOCRElement:
         self.__coordinates = (0, 0, 0, 0)
         self._id = None
         self._children = []
+        self._properties = []
 
         self._parse()
 
@@ -39,15 +40,7 @@ class HOCRElement:
 
     def _parse(self):
         self._id = self._hocr_html.attrs.get("id", None)
-        title = self._hocr_html.attrs.get("title", "")
-        match = HOCRElement.COORDINATES_PATTERN.search(title)
-        if match:
-            self.__coordinates = (
-                int(float(match.group(1))),
-                int(float(match.group(2))),
-                int(float(match.group(3))),
-                int(float(match.group(4)))
-            )
+        self._parse_properties()
 
         if self._child_node_class:
             tag = self._child_node_class.HTML_TAG
@@ -56,6 +49,24 @@ class HOCRElement:
             for html_child in children:
                 hocr_child = self._child_node_class(html_child, parent=self)
                 self._children.append(hocr_child)
+
+    def _parse_properties(self):
+        title = self._hocr_html.attrs.get("title")
+        if title:
+            self._properties = [x.strip() for x in title.split(";")]
+
+        for property_string in self._properties:
+            self._parse_coordinates(property_string)
+
+    def _parse_coordinates(self, string):
+        match = HOCRElement.COORDINATES_PATTERN.search(string)
+        if match:
+            self.__coordinates = (
+                int(float(match.group(1))),
+                int(float(match.group(2))),
+                int(float(match.group(3))),
+                int(float(match.group(4)))
+            )
 
     @classproperty
     @abstractmethod

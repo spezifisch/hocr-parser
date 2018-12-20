@@ -206,6 +206,8 @@ class HOCRParserTests(BaseTestClass):
                         == len(obj.children)
 
         - obj.html equals node.prettify()
+        - coordinates
+          obj.__coordinates == obj.coordinates == expected_coordinates
         """
         def compare_func(obj, node):
             # number of children must be consistent
@@ -217,6 +219,13 @@ class HOCRParserTests(BaseTestClass):
 
             # obj.html equals node.prettify()
             self.assertEqual(obj.html, node.prettify())
+
+            # coordinates
+            self.assertEquals(
+                obj._HOCRElement__coordinates,
+                obj.coordinates,
+                self.expected["coordinates"][obj.id or "document"]
+            )
 
         self.recursively_compare_tree_against_html(compare_func)
 
