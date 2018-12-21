@@ -26,7 +26,7 @@ class BaseTestClass(unittest.TestCase):
         expected_values_file = hocr_file.rsplit(".", 1)[0] + ".expected.json"
         expected_values_path = os.path.join(own_dir, "data", expected_values_file)
 
-        cls.document = parser.HOCRDocument(hocr_path, is_path=True)
+        cls.document = parser.HOCRParser(hocr_path, is_path=True)
         cls.soup = BeautifulSoup(open(hocr_path, "r").read(), "html.parser")
         cls.expected = json.loads(open(expected_values_path).read())
 
@@ -78,9 +78,6 @@ class BaseTestClass(unittest.TestCase):
             # invoke comparator function
             func(obj=obj, node=node)
 
-            if obj.__class__.__name__ == "HOCRDocument":
-                node = node.body
-
             # filter
             child_nodes = self.get_children_of_node(node)
 
@@ -92,7 +89,7 @@ class BaseTestClass(unittest.TestCase):
                 inner(obj=child_obj, node=child_node)
 
         # call inner() with root elements
-        inner(obj=self.document, node=self.soup)
+        inner(obj=self.document.root, node=self.soup.body)
 
 
 class TreeStructureTests(BaseTestClass):
@@ -116,16 +113,13 @@ class TreeStructureTests(BaseTestClass):
             # same id
             self.assertEqual(obj.id, node.get("id"))
 
-            if obj.__class__.__name__ == "HOCRDocument":
-                node = self.soup.body
-
             # parents have same id (only for non-root elements)
-            if not obj == self.document:
+            if not obj == self.document.root:
                 self.assertEqual(obj.parent.id, node.parent.get("id"))
 
             # same number of children
             child_nodes = self.get_children_of_node(node)
-            self.assertEqual(obj.nchildren, len(child_nodes))
+            self.assertEqual(len(obj.children), len(child_nodes))
 
             # children have same ids
             for (child_obj, child_node) in zip(obj.children, child_nodes):
@@ -146,7 +140,7 @@ class TreeStructureTests(BaseTestClass):
         """
         def compare_func(obj, node):
             # no need to test for parents on root level of the tree
-            if obj == self.document:
+            if obj == self.document.root:
                 return
 
             # parent-child link. obj must be in obj.parent.children
@@ -175,7 +169,7 @@ class TreeStructureTests(BaseTestClass):
 
 
 class HOCRParserTests(BaseTestClass):
-    def test_creation_methods(self):
+    def _test_creation_methods(self):
         """
         test_creation_methods (test_hocr.HOCRParserTests)
 
@@ -185,7 +179,7 @@ class HOCRParserTests(BaseTestClass):
         lead to the same parsed document.
         """
         doc1 = self.document
-        doc2 = parser.HOCRDocument(self.soup.prettify(), is_path=False)
+        doc2 = parser.HOCRParser(self.soup.prettify(), is_path=False)
         self.assertEqual(doc1, doc2)
 
     def test_consistency(self):
@@ -203,17 +197,16 @@ class HOCRParserTests(BaseTestClass):
         def compare_func(obj, node):
             # number of children must be consistent
             self.assertEquals(
-                obj.nchildren,
                 len(obj.children),
                 len(obj._children)
             )
 
             # obj.html equals node.prettify()
-            self.assertEqual(obj._hocr_html, node)
+            self.assertEqual(obj._html, node)
 
             # coordinates
             self.assertEquals(
-                obj._HOCRElement__coordinates,
+                obj._coordinates,
                 obj.coordinates,
                 self.expected["coordinates"][obj.id or "document"]
             )
@@ -224,7 +217,7 @@ class HOCRParserTests(BaseTestClass):
         expected_text = self.expected["ocr_text"]
 
         def compare_func(obj, node):
-            if obj.__class__.__name__ == "HOCRDocument":
+            if obj == self.document.root:
                 expected = expected_text["document"]
             else:
                 expected = expected_text[obj.id]
@@ -236,7 +229,7 @@ class HOCRParserTests(BaseTestClass):
         expected_coordinates = self.expected["coordinates"]
 
         def compare_func(obj, node):
-            if obj.__class__.__name__ == "HOCRDocument":
+            if obj == self.document.root:
                 expected = expected_coordinates["document"]
             else:
                 expected = expected_coordinates[obj.id]

@@ -1,63 +1,71 @@
 __author__ = 'Rafa Haro <rh@athento.com>'
 
-from abc import ABCMeta, abstractmethod
-from bs4 import BeautifulSoup
-
 import re
+from bs4 import BeautifulSoup
+from bs4.element import NavigableString
 
 
 COORDINATES_PATTERN = re.compile(
     r"\bbbox\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\b"
 )
 
+CHILD_STRING_SEPARATORS = {
+    "ocr_page": "\n\n",
+    "ocr_area": "\n",
+    "ocr_par": "\n",
+    "ocr_line": " "
+}
 
-class classproperty(property):
-    def __get__(self, cls, owner):
-        return classmethod(self.fget).__get__(None, owner)()
+
+class HOCRParser:
+    def __init__(self, source, is_path=False):
+        if not is_path:
+            html = BeautifulSoup(source, "html.parser")
+        else:
+            html = BeautifulSoup(open(source, "r").read(), "html.parser")
+
+        self.root = HOCRNode(html.body)
+
+    def __eq__(self, other):
+        if not isinstance(self, type(other)):
+            return False
+
+        else:
+            return self.root == other.root
+
+    @property
+    def ocr_text(self):
+        return self.root.ocr_text
 
 
-class HOCRElement:
-    __metaclass__ = ABCMeta
-
-    COORDINATES_PATTERN = re.compile(
-        r"\bbbox\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\b"
-    )
-    HTML_TAG = None
-    HTML_CLASS = None
-
-    def __init__(self, hocr_html, parent=None):
-        self._hocr_html = hocr_html
+class HOCRNode:
+    def __init__(self, html, parent=None):
+        self._html = html
         self._parent = parent
-        self.__coordinates = (0, 0, 0, 0)
-        self._id = None
         self._children = []
+        self._id = None
+        self._ocr_class = None
         self._properties = []
+        self._coordinates = (0, 0, 0, 0)
 
         self._parse()
 
-    def __hash__(self):
-        return hash(self._id)
-
     def __eq__(self, other):
-        if not isinstance(other, HOCRElement):
+        if not isinstance(self, type(other)):
             return False
         else:
-            return self._id == other._id
+            return self._html == other.html
 
     def _parse(self):
-        self._id = self._hocr_html.attrs.get("id", None)
+        self._id = self._html.attrs.get("id", None)
+        self._ocr_class = self._html.attrs.get("class", [""])[0]
         self._parse_properties()
 
-        if self._child_node_class:
-            tag = self._child_node_class.HTML_TAG
-            html_class = self._child_node_class.HTML_CLASS
-            children = self._hocr_html.find_all(tag, {"class": html_class})
-            for html_child in children:
-                hocr_child = self._child_node_class(html_child, parent=self)
-                self._children.append(hocr_child)
+        for node in self._html.contents:
+            self._create_child_node(node)
 
     def _parse_properties(self):
-        title = self._hocr_html.attrs.get("title")
+        title = self._html.attrs.get("title")
         if title:
             self._properties = [x.strip() for x in title.split(";")]
 
@@ -67,29 +75,37 @@ class HOCRElement:
     def _parse_coordinates(self, string):
         match = COORDINATES_PATTERN.search(string)
         if match:
-            self.__coordinates = (
+            self._coordinates = (
                 int(float(match.group(1))),
                 int(float(match.group(2))),
                 int(float(match.group(3))),
                 int(float(match.group(4)))
             )
 
-    @classproperty
-    @abstractmethod
-    def _child_node_class(self):
-        raise NotImplementedError()
+    def _create_child_node(self, node):
+        if isinstance(node, NavigableString):
+            return
+        if not node.has_attr("id"):
+            return
+
+        child_node = HOCRNode(node, parent=self)
+        self._children.append(child_node)
 
     @property
-    def id(self):
-        return self._id
+    def ocr_text(self):
+        if len(self._children) == 0:
+            return self._html.string
 
-    @property
-    def coordinates(self):
-        return self.__coordinates
+        joiner = CHILD_STRING_SEPARATORS.get(self.ocr_class, "\n")
+
+        output = [child.ocr_text for child in self._children]
+        output = joiner.join(output)
+        return output
 
     @property
     def html(self):
-        return self._hocr_html.prettify()
+        """BeautifulSoup-parsed HTML of this element."""
+        return self._html
 
     @property
     def parent(self):
@@ -100,122 +116,17 @@ class HOCRElement:
         return self._children
 
     @property
-    def nchildren(self):
-        return len(self._children)
+    def id(self):
+        return self._id
 
     @property
-    @abstractmethod
-    def ocr_text(self):
-        raise NotImplementedError()
-
-
-class HOCRDocument(HOCRElement):
-    def __init__(self, source, is_path=False):
-        if not is_path:
-            hocr_html = BeautifulSoup(source, "html.parser")
-        else:
-            hocr_html = BeautifulSoup(open(source, "r").read(), "html.parser")
-
-        super(HOCRDocument, self).__init__(hocr_html, parent=None)
-
-    @classproperty
-    def _child_node_class(cls):
-        return Page
+    def ocr_class(self):
+        return self._ocr_class
 
     @property
-    def ocr_text(self):
-        output = [child.ocr_text for child in self._children]
-        output = "\n\n".join(output)
-        return output
-
-
-class Page(HOCRElement):
-    HTML_TAG = "div"
-    HTML_CLASS = "ocr_page"
-
-    def __init__(self, hocr_html, parent=None):
-        super(Page, self).__init__(hocr_html, parent)
-
-    @classproperty
-    def _child_node_class(self):
-        return Area
+    def properties(self):
+        return self._properties
 
     @property
-    def ocr_text(self):
-        output = [child.ocr_text for child in self._children]
-        output = "\n\n".join(output)
-        return output
-
-
-class Area(HOCRElement):
-    HTML_TAG = "div"
-    HTML_CLASS = "ocr_carea"
-
-    def __init__(self, hocr_html, parent=None):
-        super(Area, self).__init__(hocr_html, parent)
-
-    @classproperty
-    def _child_node_class(self):
-        return Paragraph
-
-    @property
-    def ocr_text(self):
-        output = [child.ocr_text for child in self._children]
-        output = "\n".join(output)
-        return output
-
-
-class Paragraph(HOCRElement):
-    HTML_TAG = "p"
-    HTML_CLASS = "ocr_par"
-
-    def __init__(self, hocr_html, parent=None):
-        super(Paragraph, self).__init__(hocr_html, parent)
-
-    @classproperty
-    def _child_node_class(self):
-        return Line
-
-    @property
-    def ocr_text(self):
-        output = [child.ocr_text for child in self._children]
-        output = "\n".join(output)
-        return output
-
-
-class Line(HOCRElement):
-    HTML_TAG = "span"
-    HTML_CLASS = "ocr_line"
-
-    def __init__(self, hocr_html, parent=None):
-        super(Line, self).__init__(hocr_html, parent)
-
-    @classproperty
-    def _child_node_class(self):
-        return Word
-
-    @property
-    def ocr_text(self):
-        output = [child.ocr_text for child in self._children]
-        output = " ".join(output)
-        return output
-
-
-class Word(HOCRElement):
-    HTML_TAG = "span"
-    HTML_CLASS = "ocrx_word"
-
-    def __init__(self, hocr_html, parent=None):
-        super(Word, self).__init__(hocr_html, parent)
-
-    @classproperty
-    def _child_node_class(self):
-        return None
-
-    @property
-    def ocr_text(self):
-        text = self._hocr_html.string
-        if text:
-            return text
-        else:
-            return ""
+    def coordinates(self):
+        return self._coordinates
