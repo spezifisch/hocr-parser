@@ -1,11 +1,11 @@
 import unittest
-from hocr_parser import parser
+from hocr_parser.parser import COORDINATES_PATTERN
 
 
 class RegexTests(unittest.TestCase):
     @classmethod
     def setup_class(cls):
-        cls.bbox_pattern = parser.HOCRElement.COORDINATES_PATTERN
+        cls.bbox_pattern = COORDINATES_PATTERN
 
     def test_valid_bboxes(self):
         # normal case

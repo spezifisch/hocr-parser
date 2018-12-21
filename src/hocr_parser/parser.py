@@ -2,7 +2,13 @@ __author__ = 'Rafa Haro <rh@athento.com>'
 
 from abc import ABCMeta, abstractmethod
 from bs4 import BeautifulSoup
+
 import re
+
+
+COORDINATES_PATTERN = re.compile(
+    r"\bbbox\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\b"
+)
 
 
 class classproperty(property):
@@ -59,7 +65,7 @@ class HOCRElement:
             self._parse_coordinates(property_string)
 
     def _parse_coordinates(self, string):
-        match = HOCRElement.COORDINATES_PATTERN.search(string)
+        match = COORDINATES_PATTERN.search(string)
         if match:
             self.__coordinates = (
                 int(float(match.group(1))),

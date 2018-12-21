@@ -2,6 +2,7 @@ import json
 import os
 import unittest
 from bs4 import BeautifulSoup
+from bs4.element import NavigableString
 from hocr_parser import parser
 
 
@@ -29,6 +30,19 @@ class BaseTestClass(unittest.TestCase):
         cls.soup = BeautifulSoup(open(hocr_path, "r").read(), "html.parser")
         cls.expected = json.loads(open(expected_values_path).read())
 
+    @staticmethod
+    def get_children_of_node(node):
+
+        def child_node_filter(node):
+            if isinstance(node, NavigableString):
+                return False
+            if not node.has_attr("id"):
+                return False
+
+            return True
+
+        return list(filter(child_node_filter, node.contents))
+
     def recursively_compare_tree_against_html(self, func):
         """
         Utility function for the common task of looping through the document
@@ -52,42 +66,36 @@ class BaseTestClass(unittest.TestCase):
                      receives the three previous arguments as keyword arguments
                      on invocation
         """
+        def child_node_filter(node):
+            if isinstance(node, NavigableString):
+                return False
+            if not node.has_attr("id"):
+                return False
+
+            return True
+
         def inner(obj, node):
             # invoke comparator function
             func(obj=obj, node=node)
 
-            # no children, no recursion
-            child_class = obj._child_node_class
-            if not child_class:
-                return
+            if obj.__class__.__name__ == "HOCRDocument":
+                node = node.body
 
-            # get html child nodes
-            child_html_class = obj._child_node_class.HTML_CLASS
-            html_children = node.find_all("", {"class": child_html_class})
+            # filter
+            child_nodes = self.get_children_of_node(node)
 
             # same number of object children and html child nodes
-            self.assertEqual(len(obj.children), len(html_children))
+            self.assertEqual(len(obj.children), len(child_nodes))
 
             # loop over children and call recursive compare on them
-            for (child, html_child) in zip(obj.children, html_children):
-                inner(
-                    obj=child,
-                    node=html_child,
-                )
+            for (child_obj, child_node) in zip(obj.children, child_nodes):
+                inner(obj=child_obj, node=child_node)
 
         # call inner() with root elements
         inner(obj=self.document, node=self.soup)
 
 
 class TreeStructureTests(BaseTestClass):
-    def test_child_node_classes(self):
-        self.assertIs(parser.HOCRDocument._child_node_class, parser.Page)
-        self.assertIs(parser.Page._child_node_class, parser.Area)
-        self.assertIs(parser.Area._child_node_class, parser.Paragraph)
-        self.assertIs(parser.Paragraph._child_node_class, parser.Line)
-        self.assertIs(parser.Line._child_node_class, parser.Word)
-        self.assertIs(parser.Word._child_node_class, None)
-
     def test_equivalency(self):
         """
         test_equivalency (test_hocr.TreeStructureTests)
@@ -99,7 +107,7 @@ class TreeStructureTests(BaseTestClass):
 
         Tests:
         - same id
-        - same html
+        #- same html
         - parents have same id
         - same number of children
         - children have same ids
@@ -108,30 +116,16 @@ class TreeStructureTests(BaseTestClass):
             # same id
             self.assertEqual(obj.id, node.get("id"))
 
-            # same html
-            # If obj is a HOCRDocument, we can't easily compare html since
-            # this class saves the entire html document.
-            # Causes problems during parent validation for Page objects.
-            # page.parent is a HOCRDocument, page_node.parent is the <body> tag
-            # of the html document.
-            # For now, only validate html if obj is not a HOCRDocument
-            if not obj.__class__.__name__ == "HOCRDocument":
-                self.assertEqual(obj._hocr_html, node)
+            if obj.__class__.__name__ == "HOCRDocument":
+                node = self.soup.body
 
             # parents have same id (only for non-root elements)
-            if not obj == self.document and not node == self.soup:
+            if not obj == self.document:
                 self.assertEqual(obj.parent.id, node.parent.get("id"))
 
             # same number of children
-            child_class = obj._child_node_class
-            if not child_class:
-                return
-            child_nodes = node.find_all("", {"class": child_class.HTML_CLASS})
-
-            self.assertEqual(
-                obj.nchildren,
-                len(child_nodes)
-            )
+            child_nodes = self.get_children_of_node(node)
+            self.assertEqual(obj.nchildren, len(child_nodes))
 
             # children have same ids
             for (child_obj, child_node) in zip(obj.children, child_nodes):
@@ -152,7 +146,7 @@ class TreeStructureTests(BaseTestClass):
         """
         def compare_func(obj, node):
             # no need to test for parents on root level of the tree
-            if obj == self.document and node == self.soup:
+            if obj == self.document:
                 return
 
             # parent-child link. obj must be in obj.parent.children
@@ -171,10 +165,7 @@ class TreeStructureTests(BaseTestClass):
         Child objects must have obj as their parent
         """
         def compare_func(obj, node):
-            child_class = obj._child_node_class
-            if not child_class:
-                return
-            child_nodes = node.find_all("", {"class": child_class.HTML_CLASS})
+            child_nodes = self.get_children_of_node(node)
 
             for (child_obj, child_node) in zip(obj.children, child_nodes):
                 # parent-child link (children must have obj as their parent)
@@ -218,7 +209,7 @@ class HOCRParserTests(BaseTestClass):
             )
 
             # obj.html equals node.prettify()
-            self.assertEqual(obj.html, node.prettify())
+            self.assertEqual(obj._hocr_html, node)
 
             # coordinates
             self.assertEquals(
@@ -242,12 +233,13 @@ class HOCRParserTests(BaseTestClass):
         self.recursively_compare_tree_against_html(compare_func)
 
     def test_page_coordinates(self):
-        pass
+        expected_coordinates = self.expected["coordinates"]
 
+        def compare_func(obj, node):
+            if obj.__class__.__name__ == "HOCRDocument":
+                expected = expected_coordinates["document"]
+            else:
+                expected = expected_coordinates[obj.id]
+            self.assertEqual(obj.coordinates, tuple(expected))
 
-
-
-
-
-
-
+        self.recursively_compare_tree_against_html(compare_func)
