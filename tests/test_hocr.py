@@ -66,14 +66,6 @@ class BaseTestClass(unittest.TestCase):
                      receives the three previous arguments as keyword arguments
                      on invocation
         """
-        def child_node_filter(node):
-            if isinstance(node, NavigableString):
-                return False
-            if not node.has_attr("id"):
-                return False
-
-            return True
-
         def inner(obj, node):
             # invoke comparator function
             func(obj=obj, node=node)
@@ -104,7 +96,7 @@ class TreeStructureTests(BaseTestClass):
 
         Tests:
         - same id
-        #- same html
+        - same html
         - parents have same id
         - same number of children
         - children have same ids
@@ -112,6 +104,9 @@ class TreeStructureTests(BaseTestClass):
         def compare_func(obj, node):
             # same id
             self.assertEqual(obj.id, node.get("id"))
+
+            # same html
+            self.assertEqual(obj.html.prettify, node.prettify)
 
             # parents have same id (only for non-root elements)
             if not obj == self.document.root:
@@ -169,18 +164,40 @@ class TreeStructureTests(BaseTestClass):
 
 
 class HOCRParserTests(BaseTestClass):
-    def _test_creation_methods(self):
-        """
-        test_creation_methods (test_hocr.HOCRParserTests)
+    def test_parsing(self):
+        # Strings next to other siblings shouldn't be parsed as nodes.
+        html = BeautifulSoup("""
+            <div id='node'>
+                I am noise. Have some newlines.
+                \n\n
+                <p id='child'>I am content</p>
+            </div>
+        """, "html.parser")
 
-        The parser can be created in two ways: Either by instantiating
-        HOCRDocument with a file path and is_path=False; or by instantiating
-        HOCRDocument with a html string directly. Both methods should
-        lead to the same parsed document.
-        """
-        doc1 = self.document
-        doc2 = parser.HOCRParser(self.soup.prettify(), is_path=False)
-        self.assertEqual(doc1, doc2)
+        node = parser.HOCRNode(html.div)
+        self.assertEqual(len(node.children), 1)
+        self.assertEqual(node.ocr_text, "I am content")
+
+        # Strings inside tags should be parsed as ocr_text but not as children
+        html = BeautifulSoup("""
+            <div id='node'>I am not noise</div>
+        """, "html.parser")
+
+        node = parser.HOCRNode(html.div)
+        self.assertEqual(len(node.children), 0)
+        self.assertEqual(node.ocr_text, "I am not noise")
+
+        # tags without id should not be parsed
+        html = BeautifulSoup("""
+            <div id='node'>
+                <p>I don't have an id</p>
+                <p id='child'>I have an id</p>
+            </div>
+        """, "html.parser")
+
+        node = parser.HOCRNode(html.div)
+        self.assertEqual(len(node.children), 1)
+        self.assertEqual(node.children[0].ocr_text, "I have an id")
 
     def test_consistency(self):
         """
@@ -201,7 +218,7 @@ class HOCRParserTests(BaseTestClass):
                 len(obj._children)
             )
 
-            # obj.html equals node.prettify()
+            # obj.html equals node
             self.assertEqual(obj._html, node)
 
             # coordinates
@@ -236,3 +253,9 @@ class HOCRParserTests(BaseTestClass):
             self.assertEqual(obj.coordinates, tuple(expected))
 
         self.recursively_compare_tree_against_html(compare_func)
+
+    def test_creation_method_equality(self):
+        doc1 = self.document
+        doc2 = parser.HOCRParser(self.soup.prettify(), is_path=False)
+
+        self.assertEqual(doc1.ocr_text, doc2.ocr_text)

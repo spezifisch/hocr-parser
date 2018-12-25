@@ -25,13 +25,7 @@ class HOCRParser:
             html = BeautifulSoup(open(source, "r").read(), "html.parser")
 
         self.root = HOCRNode(html.body)
-
-    def __eq__(self, other):
-        if not isinstance(self, type(other)):
-            return False
-
-        else:
-            return self.root == other.root
+        self.html = html
 
     @property
     def ocr_text(self):
@@ -49,12 +43,6 @@ class HOCRNode:
         self._coordinates = (0, 0, 0, 0)
 
         self._parse()
-
-    def __eq__(self, other):
-        if not isinstance(self, type(other)):
-            return False
-        else:
-            return self._html == other.html
 
     def _parse(self):
         self._id = self._html.attrs.get("id", None)
@@ -94,7 +82,7 @@ class HOCRNode:
     @property
     def ocr_text(self):
         if len(self._children) == 0:
-            return self._html.string
+            return self._html.get_text(strip=True)
 
         joiner = CHILD_STRING_SEPARATORS.get(self.ocr_class, "\n")
 
