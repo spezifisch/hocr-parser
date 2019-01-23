@@ -228,6 +228,12 @@ class HOCRParserTests(BaseTestClass):
                 self.expected["coordinates"][obj.id or "document"]
             )
 
+            # confidence
+            self.assertAlmostEqual(
+                obj.confidence,
+                self.expected["confidence"][obj.id or "document"]
+            )
+
         self.recursively_compare_tree_against_html(compare_func)
 
     def test_ocr_text(self):

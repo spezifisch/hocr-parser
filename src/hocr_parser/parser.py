@@ -41,6 +41,7 @@ class HOCRNode:
         self._ocr_class = None
         self._properties = []
         self._coordinates = (0, 0, 0, 0)
+        self._confidence = None
 
         self._parse()
 
@@ -59,6 +60,7 @@ class HOCRNode:
 
         for property_string in self._properties:
             self._parse_coordinates(property_string)
+            self._parse_confidence(property_string)
 
     def _parse_coordinates(self, string):
         match = COORDINATES_PATTERN.search(string)
@@ -69,6 +71,24 @@ class HOCRNode:
                 int(float(match.group(3))),
                 int(float(match.group(4)))
             )
+
+    def _parse_confidence(self, string):
+        splt = string.split()
+
+        if not len(splt) > 1:
+            return
+
+        if not splt[0].lower() in ["nlp", "x_confs", "x_wconf"]:
+            return
+
+        confidences = []
+        for val in splt[1:]:
+            if not val.isdigit():
+                return
+            val = int(float(val))
+            confidences.append(val)
+
+        self._confidence = sum(confidences) / len(confidences)
 
     def _create_child_node(self, node):
         if isinstance(node, NavigableString):
@@ -118,3 +138,7 @@ class HOCRNode:
     @property
     def coordinates(self):
         return self._coordinates
+
+    @property
+    def confidence(self):
+        return self._confidence
