@@ -25,11 +25,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Topic :: Software Development :: OCR'
     ],
-    package_dir={'hocr_parser': 'src/hocr_parser'},
-    packages=find_packages('src'),
-    dependency_links=[
-        'bzr+lp:beautifulsoup#egg=beautifulsoup-4.0',
-    ],
+    packages=find_packages(),
     install_requires=REQUIRED_PACKAGES,
     tests_require=REQUIRED_PACKAGES + TESTING_PACKAGES,
     extras_require={
