@@ -8,6 +8,10 @@ REQUIRED_PACKAGES = [
 
 TESTING_PACKAGES = [
     'tox',
+    'pytest',
+    'pytest-cov',
+    'pytest-random-order',
+    'flake8'
 ]
 
 setup(
@@ -25,7 +29,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Topic :: Software Development :: OCR'
     ],
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests", "*.tests", "*.tests.*"]),
     install_requires=REQUIRED_PACKAGES,
     tests_require=REQUIRED_PACKAGES + TESTING_PACKAGES,
     extras_require={
