@@ -5,7 +5,8 @@ from bs4.element import NavigableString
 
 
 class HOCRElement(HOCRNode):
-    def __init__(self, hocr_html, parent=None, next_tag=None, next_attribute=None, next_class=None):
+    def __init__(self, hocr_html, parent=None,
+                 next_tag=None, next_attribute=None, next_class=None):
         super().__init__(hocr_html, parent)
 
     def __hash__(self):
@@ -18,7 +19,8 @@ class HOCRElement(HOCRNode):
             return self._id == other._id
 
     def _create_child_node(self, node):
-        # we need to override this method to return HOCRElement instead of HOCRNode
+        # we need to override this method to return HOCRElement
+        # instead of HOCRNode
 
         if isinstance(node, NavigableString):
             return
