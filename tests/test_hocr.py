@@ -1,9 +1,13 @@
 import json
 import os
+import sys
 import unittest
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString
 from hocr_parser import parser
+
+if sys.version_info < (3, 0):
+    from io import open
 
 
 class BaseTestClass(unittest.TestCase):
@@ -22,13 +26,17 @@ class BaseTestClass(unittest.TestCase):
 
         hocr_file = "output.tesseract.hocr"
         hocr_path = os.path.join(own_dir, "data", hocr_file)
+        with open(hocr_path) as f:
+            hocr_data = f.read()
 
-        expected_values_file = hocr_file.rsplit(".", 1)[0] + ".expected.json"
-        expected_values_path = os.path.join(own_dir, "data", expected_values_file)
+        expected_file = hocr_file.rsplit(".", 1)[0] + ".expected.json"
+        expected_path = os.path.join(own_dir, "data", expected_file)
+        with open(expected_path, encoding="utf-8") as f:
+            expected_data = f.read()
 
         cls.document = parser.HOCRParser(hocr_path, is_path=True)
-        cls.soup = BeautifulSoup(open(hocr_path, "r").read(), "html.parser")
-        cls.expected = json.loads(open(expected_values_path).read())
+        cls.soup = BeautifulSoup(hocr_data, "html.parser")
+        cls.expected = json.loads(expected_data)
 
     @staticmethod
     def get_children_of_node(node):
@@ -213,7 +221,7 @@ class HOCRParserTests(BaseTestClass):
         """
         def compare_func(obj, node):
             # number of children must be consistent
-            self.assertEquals(
+            self.assertEqual(
                 len(obj.children),
                 len(obj._children)
             )
@@ -222,7 +230,7 @@ class HOCRParserTests(BaseTestClass):
             self.assertEqual(obj._html, node)
 
             # coordinates
-            self.assertEquals(
+            self.assertEqual(
                 obj._coordinates,
                 obj.coordinates,
                 self.expected["coordinates"][obj.id or "document"]

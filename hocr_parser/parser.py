@@ -1,8 +1,12 @@
 __author__ = 'Rafa Haro <rh@athento.com>'
 
 import re
+import sys
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString
+
+if sys.version_info < (3, 0):
+    from io import open
 
 
 COORDINATES_PATTERN = re.compile(
@@ -22,7 +26,9 @@ class HOCRParser:
         if not is_path:
             html = BeautifulSoup(source, "html.parser")
         else:
-            html = BeautifulSoup(open(source, "r").read(), "html.parser")
+            with open(source, encoding="utf-8") as f:
+                data = f.read()
+            html = BeautifulSoup(data, "html.parser")
 
         self.root = HOCRNode(html.body)
         self.html = html
