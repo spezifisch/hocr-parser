@@ -24,8 +24,8 @@ class HOCRParser:
         else:
             html = BeautifulSoup(open(source, "r").read(), "html.parser")
 
-        self.root = HOCRNode(html.body)
         self.html = html
+        self.root = HOCRNode(html.body)
 
     @property
     def ocr_text(self):
@@ -142,3 +142,7 @@ class HOCRNode:
     @property
     def confidence(self):
         return self._confidence
+
+
+# compatibility layer
+from .past import *
